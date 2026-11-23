@@ -43,6 +43,11 @@ python -m pytest tests/ -q          # verification suite
 jupyter lab notebooks/fedwatch_30y.ipynb
 ```
 
+**Data policy: pulls are MANUAL ONLY — nothing is scheduled or automatic.**
+New data arrives solely via the notebook's MANUAL REFRESH cell or
+`fedwatch.refresh.refresh_all()` (~$0.10 + ~$0.15/day-gap). Project
+meta-docs live in `docs/` (PRD, tech spec, decision log, living handoff).
+
 ```python
 from fedwatch import pipeline as pl
 res = pl.run(refresh=False)         # refresh=True pulls new data (~$0.30/day)
