@@ -86,6 +86,23 @@ def estimate_hw_sigma(fut: pd.DataFrame, lookback: int = 500,
     return float(daily.std() / 100.0 * np.sqrt(252))   # -> rate units, annualised
 
 
+def estimate_hw_sigma_from_options(fut: pd.DataFrame, asof=None,
+                                   opt: pd.DataFrame | None = None) -> float | None:
+    """ATM Bachelier normal vol (rate units) of the front quarterly chains.
+
+    Preferred Phase-2 source for the convexity sigma; returns None when no
+    usable option fit exists (caller falls back to the historical proxy).
+    """
+    from .phase2 import option_snapshots
+    _, fits = option_snapshots(fut, pd.Timestamp(asof), opt=opt)
+    if fits is None or fits.empty:
+        return None
+    front = fits[(fits.horizon_years > 0.2) & (fits.n_quotes >= 6)].head(3)
+    if front.empty:
+        return None
+    return float(front["atm_vol_bp"].mean()) / 1e4
+
+
 def adjusted_strip(fut: pd.DataFrame, asof: pd.Timestamp | None = None,
                    sigma: float | None = None, a: float = 0.03) -> pd.DataFrame:
     """SR3 strip + forward OIS rates (futures rate minus convexity, bps)."""

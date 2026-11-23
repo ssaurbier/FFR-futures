@@ -73,6 +73,34 @@ def check_curve(res: dict, tol_reprice_bp: float = 2.0,
     return pd.DataFrame(rows)
 
 
+def check_options(fits: pd.DataFrame, validation: pd.DataFrame,
+                  tol_martingale_bp: float = 10.0,
+                  tol_rmse_bp: float = 30.0) -> pd.DataFrame:
+    """Phase-2 checks: SABR fit quality + BL martingale condition."""
+    rows = []
+
+    def add(name, ok, detail):
+        rows.append({"check": name, "pass": bool(ok), "detail": detail})
+
+    if fits is None or not len(fits):
+        add("option fits present", False, "no usable option chains")
+        return pd.DataFrame(rows)
+
+    add("option fits present", True,
+        f"{len(fits)} expiries fit, horizons "
+        f"{fits.horizon_years.min():.2f}-{fits.horizon_years.max():.2f}Y")
+    if len(validation):
+        worst = validation.loc[validation.mean_gap_bp.abs().idxmax()]
+        add("BL martingale |mean-fwd|", worst.mean_gap_bp < tol_martingale_bp,
+            f"worst {worst.underlying}: {worst.mean_gap_bp:+.2f}bp")
+        bad_rmse = validation[validation.rmse_bp > tol_rmse_bp]
+        add("SABR fit rmse", bad_rmse.empty,
+            f"max {validation.rmse_bp.max():.2f}bp "
+            f"({len(bad_rmse)} rejected)" if len(bad_rmse) else
+            f"max {validation.rmse_bp.max():.2f}bp")
+    return pd.DataFrame(rows)
+
+
 def check_probabilities(records: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
     """Per-meeting cumulative distributions must sum to 1 and stay non-negative."""
     day = records[records["asof"] == pd.Timestamp(asof)]

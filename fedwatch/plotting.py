@@ -62,3 +62,17 @@ def plot_hw_fan(fan: pd.DataFrame, curve, asof, ax=None):
     ax.set_title("Hull-White simulated zero-rate distribution (model-based)")
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3)
+
+
+def plot_option_pdf(pdf: pd.Series, fit: dict, ax=None):
+    """BL density + fitted smile context for one option expiry."""
+    ax = ax or plt.gca()
+    from .sabr_bl import sabr_normal_vol
+    ax.plot(pdf.index, pdf.values * 100, lw=1.8,
+            label=f"BL density (T={fit['T']:.2f}Y)")
+    ax.axvline(fit["F_bps"], color="k", ls="--", lw=0.8, label="forward")
+    ax.set_xlabel("rate strike (bps)")
+    ax.set_ylabel("density per bp (%)")
+    ax.set_title("Option-implied PDF (Breeden-Litzenberger)")
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.3)

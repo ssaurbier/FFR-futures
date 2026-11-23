@@ -20,6 +20,9 @@ fedwatch/                     the engine package
 ├── regime2_sr3.py            SR3 strip + Hull-White convexity adjustment
 ├── regime3_eris.py           Eris price -> par swap inversion + DF extension
 ├── curve_bootstrap.py        DiscountCurve (Hagan-West monotone convex forwards)
+├── options_chain.py          SR3 option symbol parsing + chain snapshots
+├── sabr_bl.py                Bachelier pricing/IV, Normal SABR, BL PDFs
+├── phase2.py                 option-density orchestration (fits -> buckets)
 ├── densities.py              historical-vol densities + HW simulation fans
 ├── diagnostics.py            automated verification suite
 ├── backtest.py               historical hit-rate calibration harness
@@ -76,11 +79,17 @@ carry to ~3Y (Hull-White convexity-adjusted); Eris SOFR swap futures anchor
 arbitrage-free P(0,T). SR1 back months beyond ~2M are deliberately unused —
 they can dislocate >10bp from liquid SR3 quarterlies.
 
-## Phase 2 (stubbed)
+## Phase 2 — option-implied densities (shipped)
 
-SR3/Treasury options ingestion → Bachelier SABR → Breeden-Litzenberger PDFs on
-25bp grids, replacing the model-based tenor columns in the master matrix;
-Hull-White σ calibrated from ATM option vols.
+SR3 option chains (GLBX `SR3.OPT`, ohlcv-1d, ~$0.03/month) → Bachelier implied
+vols (bracketed root solve) → Normal SABR (β=0, leading-order Hagan) fit per
+expiry → dense call surface → Breeden-Litzenberger PDF → 25bp FedWatch buckets
+flagged `(option)` in the master matrix. Martingale check (|PDF mean −
+forward| < 10bp) rejects unreliable fits; the ATM normal-vol term structure
+calibrates the Hull-White σ used in the Regime-2 convexity adjustment.
+Treasury option chains (OZF/OZN/OZB) for 5Y+ horizons remain future work.
+
+## Caveats
 
 ## Caveats
 
