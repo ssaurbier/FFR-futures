@@ -1,1 +1,15 @@
 credentials.py
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+data/
+data/*.parquet
+data/*.csv
+archive/
+.venv/
+.zcode/
+.pytest_cache/
+futures_daily_contracts.csv
+fred_curves.csv
+fomc_meetings.csv
