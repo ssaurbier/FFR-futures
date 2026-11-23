@@ -73,6 +73,33 @@ def check_curve(res: dict, tol_reprice_bp: float = 2.0,
     return pd.DataFrame(rows)
 
 
+def check_treasury(validation: pd.DataFrame, asof: pd.Timestamp | None = None,
+                   max_atm_vol_yield_bp: float = 250.0) -> pd.DataFrame:
+    """Phase-3 checks on UST option densities."""
+    rows = []
+
+    def add(name, ok, detail):
+        rows.append({"check": name, "pass": bool(ok), "detail": detail})
+
+    if validation is None or not len(validation):
+        add("UST option fits present", False, "no usable Treasury chains")
+        return pd.DataFrame(rows)
+
+    horizon = ""
+    if asof is not None:
+        horizon = (f", horizon {(validation.expiry.max() - pd.Timestamp(asof)).days / 365:.2f}Y")
+    add("UST option fits present", True,
+        f"{len(validation)} chains, tenors {sorted(validation.tenor.unique())}{horizon}")
+    vols = validation["atm_vol_yield_bp"]
+    add("ATM yield vols sane", (vols > 20).all() and (vols < max_atm_vol_yield_bp).all(),
+        f"{vols.min():.0f}-{vols.max():.0f}bp across chains")
+    rel = (validation.rmse_pts / validation.atm_vol_pts).max()
+    add("SABR price-space rmse", rel < 0.10,
+        f"max {validation.rmse_pts.max():.3f}pts "
+        f"({rel:.1%} of ATM vol)")
+    return pd.DataFrame(rows)
+
+
 def check_options(fits: pd.DataFrame, validation: pd.DataFrame,
                   tol_martingale_bp: float = 10.0,
                   tol_rmse_bp: float = 30.0) -> pd.DataFrame:

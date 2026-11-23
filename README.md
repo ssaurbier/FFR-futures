@@ -23,6 +23,7 @@ fedwatch/                     the engine package
 ├── options_chain.py          SR3 option symbol parsing + chain snapshots
 ├── sabr_bl.py                Bachelier pricing/IV, Normal SABR, BL PDFs
 ├── phase2.py                 option-density orchestration (fits -> buckets)
+├── treasury_options.py       OZF/OZN/OZB chains -> UST yield densities
 ├── densities.py              historical-vol densities + HW simulation fans
 ├── diagnostics.py            automated verification suite
 ├── backtest.py               historical hit-rate calibration harness
@@ -87,7 +88,18 @@ expiry → dense call surface → Breeden-Litzenberger PDF → 25bp FedWatch buc
 flagged `(option)` in the master matrix. Martingale check (|PDF mean −
 forward| < 10bp) rejects unreliable fits; the ATM normal-vol term structure
 calibrates the Hull-White σ used in the Regime-2 convexity adjustment.
-Treasury option chains (OZF/OZN/OZB) for 5Y+ horizons remain future work.
+
+## Phase 3 — Treasury options for the long end (shipped)
+
+CBOT options on Treasury futures (`OZF`/`OZN`/`OZB` roots on GLBX) →
+OTM-filtered chains (American-exercise mitigation, tick-floor premium filter)
+→ Normal SABR in price space → BL price density → yield-space mapping via
+constant dollar duration → anchored at the forward Treasury yield (Eris
+forward par − standing swap spread) → 25bp buckets flagged `(option, UST…)`.
+Live validation: UST5Y/10Y/30Y densities with ATM yield vols 107/79/70bp and
+a −53bp implied 10Y swap spread consistent with the SOFR/UST curve stack.
+v2 upgrades: CTD-based dollar durations (replacing product constants),
+Newton-Raphson price→yield in the tails.
 
 ## Caveats
 
