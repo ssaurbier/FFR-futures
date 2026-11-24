@@ -99,3 +99,10 @@ Historical chains (P4) will use symbol-decode strikes (±0.025pt ambiguity
 on quarter strikes, below tick noise) + rule-based expiry (last Friday ≥2bd
 before month-end preceding delivery). Recent defs (2026-05→) already cover
 current-date chains.
+
+**2026-11-24 — Batch-submit 504s can still create the job.** The first OZN
+submit timed out client-side but registered server-side; the retry created a
+duplicate full-range job (~$16 billed, never downloaded). Rule: `list_jobs()`
+BEFORE resubmitting after any submit error. Nothing auto-bills after the
+fact: Historical API is request/response; spend only occurs inside
+`refresh_all()` (manual) or an explicit pull.
