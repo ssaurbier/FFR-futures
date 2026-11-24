@@ -66,7 +66,17 @@ option chains into 25bp-bucketed densities (SABR→BL, double-gated), and
 
 ## Backfill status at handoff
 
-Job launched 2026-11-23 ~09:30, ~$45 authorized, monthly-chunked:
-SR3 2017-2023 + 2024-08 → then OZF/OZN/OZB 2010-2026-05 → then quarterly
-defs weeks. Expect 1-3h wall-clock. If it died: rerun the same script from
-the session log; every stage dedupes against the existing parquets.
+**COMPLETE (2026-11-24).** Full option history cached via Databento batch
+API (streaming kept 504ing — see DECISIONS 2026-11-24):
+
+| Cache | Coverage | Rows |
+|---|---|---|
+| options_sr3_ohlcv1d.parquet | 2020-01-08 → 2026-11-20 (options listed 2020) | 160k |
+| treasury_opt_ohlcv1d.parquet | 2010-06-06 → 2026-11-20, all OZF/OZN/OZB | 3.6M |
+| treasury_opt_defs.parquet | symbols listed 2026-05 → 2027 | 8.6k |
+
+Caveat for P4 (historical surfaces): treasury defs only cover 2026+ —
+historical chains need symbol-decode + rule-based expiry (see DECISIONS
+2026-11-24). `data/batch/` holds 1.1GB of raw DBN downloads; deletable,
+parquets are canonical. Everything verified: chains build at current asof,
+notebook executed end-to-end on the full caches, 46/46 tests.

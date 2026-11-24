@@ -84,3 +84,18 @@ no schedulers, nothing backgrounded by the package itself.
 2010→ ($35.70), SR3 options 2017→2023 ($0.44), sparse quarterly defs (~$9),
 2024-08 SR3 month ($0.03). ZQ.OPT does not exist on GLBX (rejected: no
 Fed Funds option layer; SR3 fills that role).
+
+**2026-11-24 — Bulk history via Databento BATCH API, not streaming.**
+The streaming gateway 504'd a 700-chunk monthly pull for ~2h with zero
+progress; killed it. `batch.submit_job` (one job per root, whole date
+range, server-side processing) delivered all four full-history jobs in
+~40 minutes. Lesson recorded: **streaming is for small/interactive pulls,
+batch is for anything >~a month of option data.** Downloads land in
+`data/batch/` (~1.1GB DBN; safe to delete — parquets are canonical).
+
+**2026-11-24 — Historical defs skipped deliberately.** Full-range
+definitions re-broadcast daily → ~$100; sparse sampling adds job complexity.
+Historical chains (P4) will use symbol-decode strikes (±0.025pt ambiguity
+on quarter strikes, below tick noise) + rule-based expiry (last Friday ≥2bd
+before month-end preceding delivery). Recent defs (2026-05→) already cover
+current-date chains.
