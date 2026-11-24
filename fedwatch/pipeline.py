@@ -159,6 +159,12 @@ def seam_check(res: dict) -> pd.DataFrame:
 # ---------------------------------------------------------------- convenience
 def run(refresh: bool = False, asof=None, sigma=None):
     bundle = load_bundle(refresh=refresh)
+    if asof is None:
+        # as-of alignment: never compare instruments priced on different days
+        # (e.g., Monday futures vs Friday Eris settlements)
+        asof = min(bundle["fut"]["date"].max(),
+                   bundle["eris_prices"]["date"].max(),
+                   bundle["fred"].index.max())
     res = build_curve(bundle, asof=asof, sigma=sigma)
     res["seam"] = seam_check(res)
     return res
