@@ -76,3 +76,95 @@ def plot_option_pdf(pdf: pd.Series, fit: dict, ax=None):
     ax.set_title("Option-implied PDF (Breeden-Litzenberger)")
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3)
+
+
+# ---------------------------------------------------------------- P4 surface
+def plot_surface_pane(surface, asof, ax=None):
+    """One pane of the 3D surface: horizon x bucket heatmap at an as-of."""
+    from .surface import slice_asof
+    ax = ax or plt.gca()
+    pane = slice_asof(surface, asof)                  # bucket x horizon
+    data = (pane.T * 100)
+    im = ax.imshow(data.values, aspect="auto", cmap="magma", origin="lower",
+                   vmin=0, vmax=max(1.0, float(np.nanmax(data.values))))
+    n = data.shape[1]                              # buckets (columns)
+    step = max(1, n // 10)
+    ax.set_xticks(range(n)[::step])
+    ax.set_xticklabels([f"{float(c):.0f}" for c in data.columns[::step]],
+                       rotation=45, fontsize=7)
+    m = data.shape[0]                              # horizons (rows)
+    astep = max(1, m // 18)
+    ax.set_yticks(range(m)[::astep])
+    ax.set_yticklabels([pd.Timestamp(c).strftime("%Y-%m") for c in data.index[::astep]],
+                       fontsize=7)
+    ax.set_xlabel("rate bucket (bps mid)")
+    ax.set_ylabel("horizon (meeting / option expiry)")
+    ax.set_title(f"Probability surface — {pd.Timestamp(asof).date()}")
+    return im
+
+
+def plot_horizon_evolution(mat, title="Distribution evolution", ax=None):
+    """THE 3D slice: as-of time (y) x rate buckets (x), colour = probability."""
+    ax = ax or plt.gca()
+    data = (mat * 100)
+    im = ax.imshow(data.values, aspect="auto", cmap="magma", origin="lower",
+                   vmin=0, vmax=max(1.0, float(np.nanmax(data.values))))
+    n = data.shape[1]
+    step = max(1, n // 14)
+    ax.set_xticks(range(n)[::step])
+    ax.set_xticklabels(list(data.columns[::step]), rotation=45, fontsize=7)
+    m = data.shape[0]
+    astep = max(1, m // 10)
+    idx = mat.index
+    ax.set_yticks(range(m)[::astep])
+    ax.set_yticklabels([pd.Timestamp(t).strftime("%Y-%m") for t in idx[::astep]],
+                       fontsize=7)
+    ax.set_xlabel("rate bucket (bps mid)")
+    ax.set_ylabel("as-of date")
+    ax.set_title(title)
+    return im
+
+
+def animate_density(mat, path, title="Density evolution", fps=8):
+    """GIF animation of one horizon's distribution morphing through time."""
+    from matplotlib.animation import FuncAnimation, PillowWriter
+    cols = mat.columns.values.astype(float)
+    vals = mat.values
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+
+    def draw(i):
+        ax.clear()
+        ax.fill_between(cols, vals[i] * 100, color="crimson", alpha=0.35)
+        ax.plot(cols, vals[i] * 100, color="crimson", lw=1.8)
+        m = float(np.dot(cols, vals[i]))
+        ax.axvline(m, color="k", ls="--", lw=0.8)
+        ax.set_xlim(cols.min(), cols.max())
+        ax.set_ylim(0, max(1.0, float(np.nanmax(vals)) * 100) * 1.05)
+        ax.set_xlabel("rate bucket (bps mid)")
+        ax.set_ylabel("probability (%)")
+        ax.set_title(f"{title} — {pd.Timestamp(mat.index[i]).date()}")
+
+    anim = FuncAnimation(fig, draw, frames=len(mat), interval=1000 // fps)
+    anim.save(path, writer=PillowWriter(fps=fps))
+    plt.close(fig)
+    return path
+
+
+def plot_mean_band(surface, layer, tenor=None, ax=None, nsd=2.0):
+    """Mean +- nsd*sd of one horizon family through history."""
+    from .surface import horizon_series
+    ax = ax or plt.gca()
+    mat = horizon_series(surface, layer, tenor)
+    cols = mat.columns.values.astype(float)
+    p = mat.values
+    mean = p @ cols
+    sd = np.sqrt(((cols[None, :] - mean[:, None]) ** 2 * p).sum(axis=1))
+    t = mat.index
+    ax.fill_between(t, mean - nsd * sd, mean + nsd * sd, alpha=0.25,
+                    label=f"mean +- {nsd:g}sd")
+    ax.plot(t, mean, lw=1.6, color="crimson", label="mean")
+    ax.set_ylabel("rate (bps)")
+    lab = f"{layer}" + (f" {tenor:.0f}Y" if tenor else "")
+    ax.set_title(f"Distribution centre through time — {lab}")
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.3)

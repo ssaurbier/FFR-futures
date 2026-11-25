@@ -93,6 +93,7 @@ def chain_snapshot(opt: pd.DataFrame, fut: pd.DataFrame, asof: pd.Timestamp,
         chain["fut_price"] = f_price
         chain["fut_rate_bps"] = (100.0 - f_price) * 100.0
         chain["T_years"] = T
+        chain["expiry"] = expiry
         chain = chain[chain["price"] > 0]
         chains[und] = chain.sort_values(["cp", "strike_price"]).reset_index(drop=True)
     return chains

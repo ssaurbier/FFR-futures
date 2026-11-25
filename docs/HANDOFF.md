@@ -58,10 +58,14 @@ option chains into 25bp-bucketed densities (SABR→BL, double-gated), and
    SR3 2017→, quarterly defs) — background job writing to
    `data/treasury_opt_ohlcv1d.parquet`, `data/options_sr3_ohlcv1d.parquet`,
    `data/treasury_opt_defs.parquet`. After it lands: rerun notebook, commit.
-2. **P4 — the 3D surface (the actual goal):** batch `master_matrix` over
-   historical as-of dates → parquet cube (date × horizon × bucket) →
-   animation + calibration studies. All components exist; this is
-   orchestration + storage + viz.
+2. ~~P4 — the 3D surface~~ **SHIPPED (2026-11-25):** `data/surface.parquet`
+   (~500k rows; fomc daily 2010→, ust_opt weekly 2010→, sr3_opt weekly
+   2022→), `fedwatch/surface.py`, notebook Phase-4 cells incl. the animated
+   10Y GIF. Gotchas encoded: expiry-rule holiday rolls, vega-weighted fits,
+   `as_of` (not `asof` — pandas method collision), `dropna=False` groupby.
+   Remaining ideas: calibration studies vs realized outcomes, seam-gap
+   signal monitor, forward-anchored UST densities (needs historical Eris
+   coupons), CTD durations, 2017-18 UST gap investigation.
 3. Modeling v2 list lives in PRD §3.2 (CTD durations, SABR wings, Eris 25Y).
 
 ## Backfill status at handoff

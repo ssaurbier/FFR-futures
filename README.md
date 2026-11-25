@@ -106,6 +106,21 @@ a −53bp implied 10Y swap spread consistent with the SOFR/UST curve stack.
 v2 upgrades: CTD-based dollar durations (replacing product constants),
 Newton-Raphson price→yield in the tails.
 
+## Phase 4 — the 3D probability surface (shipped)
+
+`fedwatch.surface` builds the historical cube — **as-of time x horizon x
+25bp buckets** — as a long-format parquet (`data/surface.parquet`,
+~500k rows): `fomc` daily since 2010 (4,100 dates), `sr3_opt` weekly since
+2022 (SR3 options have no electronic history before then), `ust_opt`
+weekly since 2010. Treasury historical chains run defs-free via the CME
+expiry rule (verified 5,144/5,144 against listed definitions incl.
+Good-Friday/Christmas rolls) and vega-weighted SABR fits (unweighted fits
+failed through the COVID smile). Notebook renders the panes, the
+time-evolution heatmap, the mean±2sd band, and an animated GIF of the 10Y
+distribution morphing 2010→present. Known gaps: UST fits reject
+2017-2018 (low-vol smiles under the gate) and some single dates; UST
+densities are spot-CMT anchored (v1).
+
 ## Caveats
 
 ## Caveats

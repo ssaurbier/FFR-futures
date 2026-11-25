@@ -13,3 +13,4 @@ archive/
 futures_daily_contracts.csv
 fred_curves.csv
 fomc_meetings.csv
+*.gif
