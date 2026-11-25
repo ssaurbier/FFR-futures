@@ -47,3 +47,11 @@ def test_extrapolation_beyond_last_node():
     df35 = c.df(35.0)
     assert 0 < df35 < 1
     assert np.isfinite(df35)
+
+
+def test_par_swap_short_span_single_period():
+    c = _flat_curve(0.04)
+    par, ann = c.par_swap(c.asof + pd.Timedelta(days=2),
+                          c.asof + pd.Timedelta(days=91))   # 3M swap
+    assert 0.039 < par < 0.041
+    assert 0.2 < ann < 0.3

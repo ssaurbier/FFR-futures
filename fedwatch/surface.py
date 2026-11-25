@@ -33,7 +33,7 @@ from .treasury_options import (PRODUCTS, fit_sabr_price,
 
 SURFACE_PARQUET = config.DATA_DIR / "surface.parquet"
 
-LAYERS = ("fomc", "sr3_opt", "ust_opt")
+LAYERS = ("fomc", "sr3_opt", "ust_opt", "model")
 
 
 # ---------------------------------------------------------------- FOMC layer
@@ -51,8 +51,10 @@ def fomc_layer(bundle: dict, start=None, end=None) -> pd.DataFrame:
         df = df[df["as_of"] >= pd.Timestamp(start)]
     if end:
         df = df[df["as_of"] <= pd.Timestamp(end)]
-    return df.assign(layer="fomc")[["as_of", "horizon", "layer", "tenor",
-                                    "bucket_mid", "p"]]
+    df = df.assign(layer="fomc")
+    df["horizon_years"] = (df["horizon"] - df["as_of"]).dt.days / 365.0
+    return df[["as_of", "horizon", "layer", "tenor", "horizon_years",
+               "bucket_mid", "p"]]
 
 
 # ---------------------------------------------------------------- option layers
@@ -75,8 +77,9 @@ def _sr3_layer(bundle: dict, opt: pd.DataFrame, grid) -> pd.DataFrame:
             for mid, p in b.items():
                 out.append((t, expiry, np.nan, mid, p))
     df = pd.DataFrame(out, columns=["as_of", "horizon", "tenor",
-                                    "bucket_mid", "p"])
-    return df.assign(layer="sr3_opt")
+                                    "bucket_mid", "p"]).assign(layer="sr3_opt")
+    df["horizon_years"] = (df["horizon"] - df["as_of"]).dt.days / 365.0
+    return df
 
 
 def _ust_layer(bundle: dict, defs: pd.DataFrame, px: pd.DataFrame, grid
@@ -106,8 +109,40 @@ def _ust_layer(bundle: dict, defs: pd.DataFrame, px: pd.DataFrame, grid
                 out.append((t, pd.Timestamp(chain["expiry"].iloc[0]), tenor,
                             mid, p))
     df = pd.DataFrame(out, columns=["as_of", "horizon", "tenor",
-                                    "bucket_mid", "p"])
-    return df.assign(layer="ust_opt")
+                                    "bucket_mid", "p"]).assign(layer="ust_opt")
+    df["horizon_years"] = (df["horizon"] - df["as_of"]).dt.days / 365.0
+    return df
+
+
+# ---------------------------------------------------------------- model layer
+def model_layer(bundle: dict, curve_hist: pd.DataFrame,
+                tenors=(2, 3, 5, 7, 10, 15, 20, 30)) -> pd.DataFrame:
+    """Curve-anchored densities at standard tenors for every curve-history
+    date (historical-vol method; flagged 'model' until option PDFs exist at
+    that horizon). Completes the FedWatch-style 0-30Y forward pane."""
+    from .densities import _realized_sigma, bucket_density
+
+    fut = bundle["fut"]
+    rows = []
+    for t, blk in curve_hist.groupby("as_of"):
+        zero = blk.set_index("horizon_years")["zero_bp"]
+        for tenor in tenors:
+            fwd = zero.get(float(tenor), np.nan)
+            if not np.isfinite(fwd):
+                continue
+            sig = _realized_sigma(fut, tenor, t)
+            if not np.isfinite(sig) or sig <= 0:
+                continue
+            sig_h = sig * np.sqrt(tenor)
+            b = bucket_density(float(fwd), sig_h)
+            for mid, p in b.items():
+                if mid < 0:
+                    continue
+                rows.append((pd.Timestamp(t), pd.NaT, float(tenor), mid, p))
+    df = pd.DataFrame(rows, columns=["as_of", "horizon", "tenor",
+                                     "bucket_mid", "p"]).assign(layer="model")
+    df["horizon_years"] = df["tenor"]
+    return df
 
 
 # ---------------------------------------------------------------- build/merge
@@ -137,6 +172,15 @@ def build_surface(layers=LAYERS, start=None, end=None,
         if verbose:
             print(f"sr3_opt layer: {len(df):,} rows, "
                   f"{df["as_of"].nunique()} as-of dates", flush=True)
+
+    if "model" in layers:
+        from .curve_history import load_curve_history
+        ch = load_curve_history()
+        df = model_layer(bundle, ch)
+        frames.append(df)
+        if verbose:
+            print(f"model layer: {len(df):,} rows, "
+                  f"{df['as_of'].nunique()} as-of dates", flush=True)
 
     if "ust_opt" in layers:
         from .treasury_options import load_opt_defs, load_opt_prices

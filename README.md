@@ -121,6 +121,19 @@ distribution morphing 2010→present. Known gaps: UST fits reject
 2017-2018 (low-vol smiles under the gate) and some single dates; UST
 densities are spot-CMT anchored (v1).
 
+## Phase 5 — the forward expected-rate surface (shipped)
+
+`curve_history` evaluates the unified curve weekly on a 16-point horizon
+grid (1M→30Y) for every date since Eris-SOFR listings (Oct 2020 →, 320
+dates) — `data/curve_history.parquet`. The surface cube gains a `model`
+layer (curve-anchored densities at 2-30Y tenors, 318 dates) and a unified
+`horizon_years` axis, making the full FedWatch-style 0-30Y forward
+probability pane available at any historical date. Plotly `go.Surface`
+charts in the notebook: the forward-rate surface (the 30Y-deep rebirth of
+the original 'FFR Curves' chart), per-tenor probability-surface evolution,
+and the forward probability pane. Sub-year par swaps fixed to single
+periods. Pre-2020 long end requires Eris LIBOR-era handling (parked).
+
 ## Caveats
 
 ## Caveats

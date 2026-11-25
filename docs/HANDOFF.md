@@ -66,6 +66,13 @@ option chains into 25bp-bucketed densities (SABR→BL, double-gated), and
    Remaining ideas: calibration studies vs realized outcomes, seam-gap
    signal monitor, forward-anchored UST densities (needs historical Eris
    coupons), CTD durations, 2017-18 UST gap investigation.
+3. ~~P5 — forward expected-rate surface~~ **SHIPPED (2026-11-25):**
+   `curve_history.py` (320 weekly dates x 16 horizons, 0-30Y, SOFR era),
+   cube `model` layer + `horizon_years` axis, plotly go.Surface charts
+   (forward-rate surface, PDF evolution, 0-30Y forward pane). GIF path
+   bug fixed (kernel-cwd). Gotchas: sub-year par swaps need single-period
+   schedules; divide-by-zero warning noise from duplicate curve nodes
+   (cosmetic, cleanup candidate).
 3. Modeling v2 list lives in PRD §3.2 (CTD durations, SABR wings, Eris 25Y).
 
 ## Backfill status at handoff

@@ -125,8 +125,10 @@ def plot_horizon_evolution(mat, title="Distribution evolution", ax=None):
     return im
 
 
-def animate_density(mat, path, title="Density evolution", fps=8):
+def animate_density(mat, path=None, title="Density evolution", fps=8):
     """GIF animation of one horizon's distribution morphing through time."""
+    from .config import REPO_ROOT
+    path = path or str(REPO_ROOT / "notebooks" / "density_evolution.gif")
     from matplotlib.animation import FuncAnimation, PillowWriter
     cols = mat.columns.values.astype(float)
     vals = mat.values
@@ -168,3 +170,74 @@ def plot_mean_band(surface, layer, tenor=None, ax=None, nsd=2.0):
     ax.set_title(f"Distribution centre through time — {lab}")
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3)
+
+
+# ---------------------------------------------------------------- plotly 3D
+def plotly_forward_surface(curve_hist, value: str = "zero_bp", title: str = None):
+    """THE forward expected-rate surface: horizon (x) x as-of date (y) x rate (z).
+
+    The 30-year-deep rebirth of the old 'FFR Curves' chart.
+    """
+    import plotly.graph_objects as go
+    from .curve_history import forward_surface
+
+    mat = forward_surface(curve_hist, value=value)
+    fig = go.Figure(data=[go.Surface(
+        z=mat.values, x=mat.columns.values, y=mat.index,
+        colorscale="RdBu_r", reversescale=True, connectgaps=True)])
+    fig.update_layout(
+        title=title or f"Forward expected-rate surface ({value}), 0-30Y through time",
+        width=1150, height=800,
+        scene=dict(xaxis_title="horizon (years)",
+                   yaxis_title="as-of date",
+                   zaxis_title="rate (bps)",
+                   aspectratio=dict(x=1, y=1.6, z=0.6)))
+    return fig
+
+
+def plotly_pdf_surface(surface, layer: str, tenor: float | None = None,
+                       pick: str = "nearest", title: str = None):
+    """3D probability surface for one horizon family:
+    rate bucket (x) x as-of date (y) x probability% (z)."""
+    import plotly.graph_objects as go
+    from .surface import horizon_series
+
+    mat = horizon_series(surface, layer, tenor, pick=pick)
+    cols = mat.columns.values.astype(float)
+    keep = (cols >= 0)
+    mat, cols = mat.loc[:, keep], cols[keep]
+    fig = go.Figure(data=[go.Surface(
+        z=mat.values * 100, x=cols, y=mat.index,
+        colorscale="Magma", connectgaps=True)])
+    lab = layer + (f" {tenor:.0f}Y" if tenor else "")
+    fig.update_layout(
+        title=title or f"Distribution evolution — {lab} (probability %)",
+        width=1150, height=800,
+        scene=dict(xaxis_title="rate bucket (bps mid)",
+                   yaxis_title="as-of date",
+                   zaxis_title="probability (%)",
+                   aspectratio=dict(x=1, y=1.6, z=0.6)))
+    return fig
+
+
+def plotly_forward_pane(surface, as_of, title: str = None):
+    """FedWatch-style forward probability view at one as-of date, 0-30Y:
+    horizon_years (x) x rate bucket (y) x probability% (z)."""
+    import plotly.graph_objects as go
+    from .surface import slice_asof
+
+    pane = slice_asof(surface, as_of)                     # bucket x horizon
+    day = surface[surface["as_of"] == pd.Timestamp(as_of)]
+    hy = day.groupby("horizon")["horizon_years"].first()
+    hy = hy.reindex(pane.columns)
+    fig = go.Figure(data=[go.Surface(
+        z=(pane.T * 100).values, x=hy.values, y=pane.index.values,
+        colorscale="Magma", connectgaps=True)])
+    fig.update_layout(
+        title=title or f"Forward probability view — {pd.Timestamp(as_of).date()} (0-30Y)",
+        width=1150, height=800,
+        scene=dict(xaxis_title="horizon (years)",
+                   yaxis_title="rate bucket (bps mid)",
+                   zaxis_title="probability (%)",
+                   aspectratio=dict(x=1.4, y=1, z=0.6)))
+    return fig

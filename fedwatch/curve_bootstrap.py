@@ -133,9 +133,12 @@ class DiscountCurve:
         effective, maturity = pd.Timestamp(effective), pd.Timestamp(maturity)
         hol = us_holidays(effective, maturity + pd.Timedelta(days=10))
         n_years = round((maturity - effective).days / 365.25)
-        ends = [modified_following(effective + pd.DateOffset(years=k), hol)
-                for k in range(1, n_years + 1)]
-        ends[-1] = maturity
+        if n_years < 1:                     # sub-year span: single period
+            ends = [pd.Timestamp(maturity)]
+        else:
+            ends = [modified_following(effective + pd.DateOffset(years=k), hol)
+                    for k in range(1, n_years + 1)]
+            ends[-1] = maturity
         starts = [effective] + ends[:-1]
         tau = [(e - s).days / 360.0 for s, e in zip(starts, ends)]
         pay = [modified_following(e + pd.Timedelta(days=2), hol) for e in ends]
