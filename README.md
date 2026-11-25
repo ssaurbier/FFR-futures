@@ -123,16 +123,18 @@ densities are spot-CMT anchored (v1).
 
 ## Phase 5 — the forward expected-rate surface (shipped)
 
-`curve_history` evaluates the unified curve weekly on a 16-point horizon
-grid (1M→30Y) for every date since Eris-SOFR listings (Oct 2020 →, 320
-dates) — `data/curve_history.parquet`. The surface cube gains a `model`
-layer (curve-anchored densities at 2-30Y tenors, 318 dates) and a unified
-`horizon_years` axis, making the full FedWatch-style 0-30Y forward
-probability pane available at any historical date. Plotly `go.Surface`
-charts in the notebook: the forward-rate surface (the 30Y-deep rebirth of
-the original 'FFR Curves' chart), per-tenor probability-surface evolution,
-and the forward probability pane. Sub-year par swaps fixed to single
-periods. Pre-2020 long end requires Eris LIBOR-era handling (parked).
+`curve_history` assembles the expected-rate surface across THREE eras
+(1,925 weekly dates, 1990-01 → present, 16 horizons each, per-row `era`
+and `source` labels): **fred** 1990-2010 FRED CMT spot curves; **hybrid**
+2010-2020 ZQ-futures front end + CMT long end; **sofr_full** 2020- full
+SR1/SR3/Eris futures stack (true forwards). The expected future rate at
+every horizon at every date back to 1990 — the FedWatch-style forward
+view, 30Y deep, through 36 years of history. The surface cube carries a
+`model` layer (curve-anchored densities at 2-30Y tenors) and a unified
+`horizon_years` axis. Plotly `go.Surface` charts: the full-span
+expected-rate surface, per-tenor probability evolution, and the 0-30Y
+forward probability pane. Era seams are visible by design (spot vs
+forward semantics, and the 2020 swap-spread level).
 
 ## Caveats
 

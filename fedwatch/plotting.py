@@ -185,13 +185,15 @@ def plotly_forward_surface(curve_hist, value: str = "zero_bp", title: str = None
     fig = go.Figure(data=[go.Surface(
         z=mat.values, x=mat.columns.values, y=mat.index,
         colorscale="RdBu_r", reversescale=True, connectgaps=True)])
+    span = f"{mat.index.min().year}–{mat.index.max().year}" if len(mat) else "-"
     fig.update_layout(
-        title=title or f"Forward expected-rate surface ({value}), 0-30Y through time",
-        width=1150, height=800,
+        title=title or (f"Expected future interest-rate surface, 0-30Y "
+                        f"({span}; eras: FRED CMT → hybrid → full futures stack)"),
+        width=1250, height=900,
         scene=dict(xaxis_title="horizon (years)",
                    yaxis_title="as-of date",
                    zaxis_title="rate (bps)",
-                   aspectratio=dict(x=1, y=1.6, z=0.6)))
+                   aspectratio=dict(x=1, y=2.2, z=0.6)))
     return fig
 
 
