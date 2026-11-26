@@ -93,3 +93,11 @@ historical chains need symbol-decode + rule-based expiry (see DECISIONS
 2026-11-24). `data/batch/` holds 1.1GB of raw DBN downloads; deletable,
 parquets are canonical. Everything verified: chains build at current asof,
 notebook executed end-to-end on the full caches, 46/46 tests.
+
+**2026-11-26 addendum (P6/P7):** future-dated fan (as-of x absolute future
+date, 30Y forward from every date back to 1990); vol_surface with
+market-implied layer preference; model layer 852k rows over 1,911 dates
+1990→now after three density bugs fixed (parcoupon percent-vs-bps,
+unnormalized vol-surface mixture, truncated tails losing mass). Vol σ
+sources chain SR3 → Eris parcoupon → FRED CMT (1990 fallback), winsorized,
+300bp cap. Cube now 1.35M rows.

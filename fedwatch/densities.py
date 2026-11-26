@@ -40,8 +40,32 @@ def bucket_density(mean_bps: float, sigma_bps: float,
 
 # ---------------------------------------------------------------- method 1
 def _realized_sigma(fut: pd.DataFrame, horizon_years: float, asof,
-                    lookback: int = 750) -> float:
-    """Ann-vol (bps) of daily changes of the relevant forward, sqrt-scaled."""
+                    lookback: int = 750, fred_bps: pd.DataFrame | None = None
+                    ) -> float:
+    """Ann-vol (bps) of daily changes of the relevant forward, sqrt-scaled.
+
+    Source order: SR3 front (<=3Y), Eris parcoupon history (>3Y),
+    FRED CMT daily changes (pre-2020 fallback, back to 1990).
+    """
+    asof = pd.Timestamp(asof)
+    sigma = _realized_sigma_inner(fut, horizon_years, asof, lookback)
+    if np.isfinite(sigma) and sigma > 0:
+        return sigma
+    if fred_bps is not None:                      # pre-2020 fallback
+        col = {2: "DGS2", 3: "DGS3", 5: "DGS5", 7: "DGS7", 10: "DGS10",
+               15: "DGS10", 20: "DGS20", 30: "DGS30"}.get(int(horizon_years))
+        if col and col in fred_bps.columns:
+            s = fred_bps[col].dropna()
+            s = s[s.index <= asof].tail(lookback)
+            daily = s.diff().dropna()
+            daily = daily[daily.abs() < 3.0 * daily.std()]
+            if len(daily) > 60:
+                return min(float(daily.std() * np.sqrt(252)), 300.0)
+    return sigma
+
+
+def _realized_sigma_inner(fut: pd.DataFrame, horizon_years: float, asof,
+                          lookback: int = 750) -> float:
     asof = pd.Timestamp(asof)
     if horizon_years <= 3.0:
         df = fut[fut.root == "SR3"].copy()
@@ -57,15 +81,19 @@ def _realized_sigma(fut: pd.DataFrame, horizon_years: float, asof,
             col = {5: "SOFR5Y", 7: "SOFR7Y", 10: "SOFR10Y",
                    15: "SOFR15Y", 20: "SOFR20Y", 30: "SOFR30Y"}.get(
                        int(horizon_years), "SOFR10Y")
-            s = pd.to_numeric(pc[col], errors="coerce").dropna()
+            s = pd.to_numeric(pc[col], errors="coerce").dropna() * 100.0  # pct -> bps
         else:
             df = fut[fut.root == "SR3"].copy()
             df["rate"] = (100.0 - df["close"]) * 100.0
             idx = df.groupby("date")["contract_month"].idxmin()
             s = df.loc[idx].set_index("date")["rate"]
     s = s[s.index <= asof].tail(lookback)
-    daily = s.diff().dropna().std()
-    return float(daily * np.sqrt(252))
+    daily = s.diff().dropna()
+    # drop gap/jump artifacts (series level-shifts, not trading variance)
+    daily = daily[daily.abs() < 3.0 * daily.std()]
+    sigma = float(daily.std() * np.sqrt(252))
+    # crisis ceiling: gap artifacts and genuine dislocations both capped
+    return min(sigma, 300.0)
 
 
 def historical_vol_densities(curve, tenors=(2, 3, 5, 7, 10, 15, 20, 30),

@@ -243,3 +243,22 @@ def plotly_forward_pane(surface, as_of, title: str = None):
                    zaxis_title="probability (%)",
                    aspectratio=dict(x=1.4, y=1, z=0.6)))
     return fig
+
+
+def plotly_future_dated_surface(mat, ztitle: str = "expected rate (bps)",
+                                title: str = None):
+    """3D surface: absolute future date (x) x as-of date (y) x value (z)."""
+    import plotly.graph_objects as go
+    fig = go.Figure(data=[go.Surface(
+        z=mat.values, x=mat.columns, y=mat.index,
+        colorscale="RdBu_r" if "rate" in ztitle else "Viridis",
+        reversescale="rate" in ztitle, connectgaps=True)])
+    span = f"{mat.index.min().year}-{mat.index.max().year}" if len(mat) else "-"
+    fig.update_layout(
+        title=title or f"{ztitle} — as-of {span}, by future contract date",
+        width=1250, height=950,
+        scene=dict(xaxis_title="future contract date",
+                   yaxis_title="current date (as-of)",
+                   zaxis_title=ztitle,
+                   aspectratio=dict(x=1, y=2.2, z=0.6)))
+    return fig

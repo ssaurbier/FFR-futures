@@ -170,3 +170,33 @@ def forward_surface(curve_hist: pd.DataFrame, value: str = "zero_bp"
     mat = curve_hist.pivot_table(index="as_of", columns="horizon_years",
                                  values=value)
     return mat.sort_index()
+
+
+# ---------------------------------------------------------------- future-dated views
+def _future_bucket(curve_hist: pd.DataFrame, bucket: str) -> pd.Series:
+    days = (curve_hist["horizon_years"] * 365.25).round().astype(int)
+    future = curve_hist["as_of"] + pd.to_timedelta(days, unit="D")
+    return future.dt.to_period(bucket).dt.to_timestamp()
+
+
+def future_dated_matrix(curve_hist: pd.DataFrame, value: str = "zero_bp",
+                        bucket: str = "Y") -> pd.DataFrame:
+    """Pivot to as-of rows x ABSOLUTE FUTURE DATES columns.
+
+    Each (as_of, horizon) point lands in the calendar bucket containing
+    as_of + horizon — a 1995 row spans 1995..2025, a 2026 row spans
+    2026..2056: the full forward-curve fan, 30Y forward from every date.
+    """
+    df = curve_hist.copy()
+    df["future_date"] = _future_bucket(df, bucket)
+    return df.pivot_table(index="as_of", columns="future_date", values=value,
+                          aggfunc="mean").sort_index()
+
+
+def horizon_detail_matrix(curve_hist: pd.DataFrame, value: str = "zero_bp",
+                          max_horizon_years: float = 2.0) -> pd.DataFrame:
+    """Short-end detail: as-of x future QUARTER, horizons <= 2Y."""
+    df = curve_hist[curve_hist["horizon_years"] <= max_horizon_years].copy()
+    df["future_date"] = _future_bucket(df, "Q")
+    return df.pivot_table(index="as_of", columns="future_date", values=value,
+                          aggfunc="mean").sort_index()

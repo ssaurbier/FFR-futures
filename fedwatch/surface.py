@@ -130,14 +130,16 @@ def model_layer(bundle: dict, curve_hist: pd.DataFrame,
             fwd = zero.get(float(tenor), np.nan)
             if not np.isfinite(fwd):
                 continue
-            sig = _realized_sigma(fut, tenor, t)
+            sig = _realized_sigma(fut, tenor, t, fred_bps=bundle.get("fred"))
             if not np.isfinite(sig) or sig <= 0:
                 continue
             sig_h = sig * np.sqrt(tenor)
             b = bucket_density(float(fwd), sig_h)
+            b = b[b.index >= 0]
+            if b.empty:
+                continue
+            b = b / b.sum()                 # renormalise truncated tail
             for mid, p in b.items():
-                if mid < 0:
-                    continue
                 rows.append((pd.Timestamp(t), pd.NaT, float(tenor), mid, p))
     df = pd.DataFrame(rows, columns=["as_of", "horizon", "tenor",
                                      "bucket_mid", "p"]).assign(layer="model")
@@ -256,3 +258,38 @@ def expected_path(surface: pd.DataFrame, asof) -> pd.DataFrame:
                      "mean_bp": mean, "sd_bp": var ** 0.5})
     out = pd.DataFrame(recs)
     return out.sort_values("horizon") if len(out) else out
+
+
+# ---------------------------------------------------------------- volatility view
+def vol_surface(surface: pd.DataFrame, bucket: str = "Y",
+                prefer: tuple[str, ...] = ("sr3_opt", "ust_opt", "model",
+                                           "fomc")) -> pd.DataFrame:
+    """Distribution width (sd, bps) by as-of x ABSOLUTE FUTURE DATE.
+
+    Where several layers cover a future date, `prefer` order picks the most
+    market-implied one. This is the '30-year volatility surface for each
+    given date': how uncertain the rate at each future calendar date was,
+    seen from each as-of date.
+    """
+    rank = {l: i for i, l in enumerate(prefer)}
+    df = surface.copy()
+    df["pref"] = df["layer"].map(rank)
+    df = df.dropna(subset=["pref"])
+    df["future_date"] = (df["as_of"] + pd.to_timedelta(
+        (df["horizon_years"] * 365.25).round().astype(int), unit="D")
+    ).dt.to_period(bucket).dt.to_timestamp()
+
+    rows = []
+    for (t, fd), grp in df.groupby(["as_of", "future_date"]):
+        grp = grp.sort_values("pref")
+        # merge layers of equal preference (e.g. all UST tenors) by mixture
+        best = grp["pref"].iloc[0]
+        g = grp[grp["pref"] == best]
+        w = g.groupby("bucket_mid")["p"].sum()
+        w = w / w.sum()                             # normalise the mixture
+        mean = float((w.index.values * w.values).sum())
+        sd = float((w.values * (w.index.values - mean) ** 2).sum() ** 0.5)
+        rows.append((t, fd, sd))
+    out = pd.DataFrame(rows, columns=["as_of", "future_date", "sd_bp"])
+    return out.pivot_table(index="as_of", columns="future_date",
+                           values="sd_bp").sort_index()

@@ -136,6 +136,18 @@ expected-rate surface, per-tenor probability evolution, and the 0-30Y
 forward probability pane. Era seams are visible by design (spot vs
 forward semantics, and the 2020 swap-spread level).
 
+## Phase 6 — future-dated fan + volatility surface (shipped)
+
+Every 3D chart now uses **absolute future contract dates** on the x-axis:
+`future_dated_matrix` pivots the curve history so each as-of row runs 30
+years forward in calendar time — the 1995 row spans 1995-2025, the 2026
+row spans 2026-2056 (the full forward-curve fan, 67 future-year columns).
+`sf.vol_surface` produces the companion **volatility surface** —
+distribution sd by future date, most-market-implied layer preferred — now
+covering 1990→2026 (σ sources: SR3 realized, Eris parcoupon history, FRED
+CMT changes pre-2020, all winsorized and capped at 300bp/yr). Notebook
+gallery: full fan, recent zoom, quarterly short-end, volatility surface.
+
 ## Caveats
 
 ## Caveats
