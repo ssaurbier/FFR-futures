@@ -121,20 +121,36 @@ def model_layer(bundle: dict, curve_hist: pd.DataFrame,
     date (historical-vol method; flagged 'model' until option PDFs exist at
     that horizon). Completes the FedWatch-style 0-30Y forward pane."""
     from .densities import _realized_sigma, bucket_density
+    from .volterm import daily_option_fits, fit_sigma_term, horizon_sigma
 
     fut = bundle["fut"]
+    # market vol term structure per date: real option ATM vols (UST 2010->,
+    # SR3 2022->) fitted + mean-reverting extrapolation to 30Y
+    def market_fit(t):
+        try:
+            fr = daily_option_fits({"bundle": bundle}, t)
+            if len(fr) >= 3:
+                return fit_sigma_term(fr["horizon_years"].values,
+                                      fr["atm_vol_bp"].values)
+        except Exception:
+            return None
+        return None
+
     rows = []
     for t, blk in curve_hist.groupby("as_of"):
         zero = blk.set_index("horizon_years")["zero_bp"]
+        vfit = market_fit(t)
         for tenor in tenors:
             fwd = zero.get(float(tenor), np.nan)
             if not np.isfinite(fwd):
                 continue
-            sig = _realized_sigma(fut, tenor, t, fred_bps=bundle.get("fred"))
-            if not np.isfinite(sig) or sig <= 0:
-                continue
-            sig_h = sig * np.sqrt(tenor)
-            b = bucket_density(float(fwd), sig_h)
+            sd = horizon_sigma(vfit, tenor) if vfit else None
+            if sd is None or not np.isfinite(sd) or sd <= 0:
+                sig = _realized_sigma(fut, tenor, t, fred_bps=bundle.get("fred"))
+                if not np.isfinite(sig) or sig <= 0:
+                    continue
+                sd = sig * np.sqrt(tenor)
+            b = bucket_density(float(fwd), sd)
             b = b[b.index >= 0]
             if b.empty:
                 continue

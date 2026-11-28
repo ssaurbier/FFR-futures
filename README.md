@@ -136,6 +136,18 @@ expected-rate surface, per-tenor probability evolution, and the 0-30Y
 forward probability pane. Era seams are visible by design (spot vs
 forward semantics, and the 2020 swap-spread level).
 
+## ⭐ THE 30-year FedWatch (the flagship)
+
+`fedwatch.forward30.forward30(asof)` — FedWatch's 2-year probability
+ladder extended to **30 years at any date**: rungs = future dates with
+25bp-bucketed rate distributions, `source`-labeled. 0-18M ZQ/FOMC
+(FedWatch parity) · ≤2.1Y SR3 option PDFs · 5/10/30Y Treasury option PDFs
+· all horizons to 30Y futures-strip mean (real Eris/SR3/SR1 forwards) ×
+**market-calibrated vol term structure** (`volterm`: real option ATM vols
+fitted with mean-reverting σ(T), bounded extrapolation, floored-lognormal
+far rungs so means stay on the strip). This is the answer to "FedWatch,
+but 30 years deep."
+
 ## Phase 6 — future-dated fan + volatility surface (shipped)
 
 Every 3D chart now uses **absolute future contract dates** on the x-axis:

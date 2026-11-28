@@ -21,11 +21,34 @@ from .regime1_fomc import bucket_midpoints
 
 # ---------------------------------------------------------------- helpers
 def bucket_density(mean_bps: float, sigma_bps: float,
-                   bucket_bp: float = 25.0, span: float = 4.0) -> pd.Series:
-    """Normal density discretised into FedWatch-style 25bp buckets."""
+                   bucket_bp: float = 25.0, span: float = 4.0,
+                   dist: str = "auto") -> pd.Series:
+    """Rate density discretised into FedWatch-style 25bp buckets.
+
+    dist='auto': normal while mean > 2.5 sigma, else a floored LOGNORMAL
+    (same mean/sd, support >= 0) — at long horizons sigma approaches the
+    mean and a truncated normal's mean drifts far above target.
+    """
     if sigma_bps <= 0:
         mids = bucket_midpoints(np.array([mean_bps]))
         return pd.Series([1.0], index=mids)
+    if dist == "auto" and mean_bps > 0 and mean_bps < 2.5 * sigma_bps:
+        dist = "lognormal"
+    if dist == "lognormal":
+        from scipy.stats import lognorm
+        m, s = max(mean_bps, 1e-6), sigma_bps
+        s2 = np.log(1.0 + (s / m) ** 2)
+        mu = np.log(m) - s2 / 2.0
+        ln = lognorm(s=np.sqrt(s2), scale=np.exp(mu))
+        hi = mean_bps + span * sigma_bps
+        while ln.cdf(hi) < 0.9999 and hi < mean_bps + 20 * sigma_bps:
+            hi *= 1.5                                # capture the fat tail
+        grid = np.arange(0.0, hi + bucket_bp, bucket_bp)
+        edges = grid + bucket_bp / 2.0                    # first bucket [0, 12.5)
+        probs = np.diff(ln.cdf(edges))
+        mids = bucket_midpoints((edges[:-1] + edges[1:]) / 2.0)
+        s_out = pd.Series(probs, index=mids)
+        return s_out / s_out.sum()
     grid = np.arange(mean_bps - span * sigma_bps,
                      mean_bps + span * sigma_bps + bucket_bp, bucket_bp)
     # integrate the normal pdf over each bucket [k - 12.5, k + 12.5]

@@ -101,3 +101,11 @@ market-implied layer preference; model layer 852k rows over 1,911 dates
 unnormalized vol-surface mixture, truncated tails losing mass). Vol σ
 sources chain SR3 → Eris parcoupon → FRED CMT (1990 fallback), winsorized,
 300bp cap. Cube now 1.35M rows.
+
+**2026-11-26 flagship addendum:** `forward30.py` (THE 30-year FedWatch
+ladder) + `volterm.py` (σ(T) from real option ATM vols, mean-reverting
+extrapolation, bounded) replace the √T hack; far rungs floored-lognormal
+so means track the futures strip (was: 775bp distortion). Cube 3.46M rows.
+Structural fact (owner-aligned): listed options stop ~2Y out; the 30Y
+product = futures-strip means + option-calibrated vols. OTC swaptions are
+the only upgrade path for truly market-implied far-date PDFs.
